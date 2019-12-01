@@ -1,6 +1,6 @@
 [submodule "vendor"]
 	path = vendor
-	url = https://github.com/jaynus/SPIRV-Reflect.git
+	url = https://github.com/h3r2tic/SPIRV-Reflect.git
 	branch = nsubtil/NV_ray_tracing
 [submodule "spirv"]
 	path = spirv
