@@ -270,7 +270,7 @@ impl Parser {
                 if let Some(op) = spirv_headers::Op::from_u32(word & 0x0000FFFF) {
                     node.op = op;
                 } else {
-                    return Err("Invalid SPIR-V op!".into());
+                    return Err(format!("Invalid SPIR-V op: {}", word & 0x0000FFFF));
                 }
             }
 
@@ -1096,8 +1096,8 @@ impl Parser {
         for node_index in 0..self.nodes.len() {
             let node = &self.nodes[node_index];
             if node.op != spirv_headers::Op::Variable
-                || (node.storage_class != spirv_headers::StorageClass::Uniform
-                    && node.storage_class != spirv_headers::StorageClass::UniformConstant)
+            /*|| (node.storage_class != spirv_headers::StorageClass::Uniform
+            && node.storage_class != spirv_headers::StorageClass::UniformConstant)*/
             {
                 continue;
             }
@@ -1215,8 +1215,9 @@ impl Parser {
                             .decoration_flags
                             .contains(crate::types::ReflectDecorationFlags::BLOCK)
                         {
+                            // Note: In spir-v >= 1.3, ::BLOCK is used tof storage buffers
                             descriptor_binding.descriptor_type =
-                                crate::types::ReflectDescriptorType::UniformBuffer;
+                                crate::types::ReflectDescriptorType::StorageBuffer;
                         } else if type_description
                             .decoration_flags
                             .contains(crate::types::ReflectDecorationFlags::BUFFER_BLOCK)
