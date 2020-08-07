@@ -1117,12 +1117,30 @@ impl Parser {
                 .descriptor_bindings
                 .reserve(binding_nodes.len());
             for node_index in binding_nodes {
+                let mut descriptor_type = crate::types::ReflectDescriptorType::Undefined;
+
                 if let Some(type_index) = module.internal.find_type(self.nodes[node_index].type_id)
                 {
                     // Resolve pointer types
                     let resolved_type_index = if *module.internal.type_descriptions[type_index].op
                         == spirv_headers::Op::TypePointer
                     {
+                        match module.internal.type_descriptions[type_index].storage_class {
+                            types::ReflectStorageClass::Uniform
+                            | types::ReflectStorageClass::UniformConstant => {
+                                descriptor_type =
+                                    crate::types::ReflectDescriptorType::UniformBuffer;
+                            }
+                            types::ReflectStorageClass::StorageBuffer => {
+                                descriptor_type =
+                                    crate::types::ReflectDescriptorType::StorageBuffer;
+                            }
+                            _ => todo!(
+                                "{:?}",
+                                module.internal.type_descriptions[type_index].storage_class
+                            ),
+                        }
+
                         if let Some(type_node_index) =
                             self.find_node(module.internal.type_descriptions[type_index].id)
                         {
@@ -1164,7 +1182,7 @@ impl Parser {
                                 node.decorations.set.word_offset,
                             ),
                             name: node.name.to_owned(),
-                            descriptor_type: crate::types::ReflectDescriptorType::Undefined,
+                            descriptor_type,
                             binding: node.decorations.binding.value,
                             input_attachment_index: node.decorations.input_attachment_index.value,
                             set: node.decorations.set.value,
@@ -1211,21 +1229,40 @@ impl Parser {
                 let type_description = &module.internal.type_descriptions[type_index];
                 match type_description.type_flags & crate::types::ReflectTypeFlags::EXTERNAL_MASK {
                     crate::types::ReflectTypeFlags::EXTERNAL_BLOCK => {
-                        if type_description
-                            .decoration_flags
-                            .contains(crate::types::ReflectDecorationFlags::BLOCK)
+                        // The descriptor type may have been already found when
+                        // processing Op::TypePointer.
+                        if crate::types::ReflectDescriptorType::Undefined
+                            == descriptor_binding.descriptor_type
                         {
-                            // Note: In spir-v >= 1.3, ::BLOCK is used tof storage buffers
-                            descriptor_binding.descriptor_type =
-                                crate::types::ReflectDescriptorType::StorageBuffer;
-                        } else if type_description
-                            .decoration_flags
-                            .contains(crate::types::ReflectDecorationFlags::BUFFER_BLOCK)
-                        {
-                            descriptor_binding.descriptor_type =
-                                crate::types::ReflectDescriptorType::StorageBuffer;
-                        } else {
-                            return Err("Invalid SPIR-V struct type".into());
+                            if type_description
+                                .decoration_flags
+                                .contains(crate::types::ReflectDecorationFlags::BLOCK)
+                            {
+                                descriptor_binding.descriptor_type =
+                                    match type_description.storage_class {
+                                        crate::types::ReflectStorageClass::StorageBuffer => {
+                                            crate::types::ReflectDescriptorType::StorageBuffer
+                                        }
+
+                                        crate::types::ReflectStorageClass::Uniform => {
+                                            crate::types::ReflectDescriptorType::UniformBuffer
+                                        }
+
+                                        _ => todo!(
+                                            "{:?} in {:#?}",
+                                            type_description.storage_class,
+                                            type_description
+                                        ),
+                                    }
+                            } else if type_description
+                                .decoration_flags
+                                .contains(crate::types::ReflectDecorationFlags::BUFFER_BLOCK)
+                            {
+                                descriptor_binding.descriptor_type =
+                                    crate::types::ReflectDescriptorType::StorageBuffer;
+                            } else {
+                                return Err("Invalid SPIR-V struct type".into());
+                            }
                         }
                     }
                     crate::types::ReflectTypeFlags::EXTERNAL_IMAGE => {
@@ -1836,7 +1873,7 @@ impl Parser {
             return Ok(crate::types::ReflectFormat::Undefined);
         }
 
-        Err("Invalid type format".into())
+        Err(format!("Invalid type format: {:#?}", type_description))
     }
 
     fn parse_interface_variable(
@@ -1876,7 +1913,7 @@ impl Parser {
             variable.name = type_node.name.to_owned();
             variable.decoration_flags = Self::apply_decorations(&type_decorations)?;
             variable.numeric = type_description.traits.numeric.clone();
-            variable.format = Self::parse_format(&type_description)?;
+            //variable.format = Self::parse_format(&type_description)?;
             variable.type_description = type_description.to_owned();
         } else {
             return Err("Invalid SPIR-V ID reference".into());
@@ -1949,7 +1986,24 @@ impl Parser {
                                     variable.storage_class =
                                         crate::types::ReflectStorageClass::Output
                                 }
-                                _ => return Err("Invalid SPIR-V ID storage class".into()),
+                                spirv_headers::StorageClass::Uniform => {
+                                    variable.storage_class =
+                                        crate::types::ReflectStorageClass::Uniform
+                                }
+                                spirv_headers::StorageClass::UniformConstant => {
+                                    variable.storage_class =
+                                        crate::types::ReflectStorageClass::UniformConstant
+                                }
+                                spirv_headers::StorageClass::StorageBuffer => {
+                                    variable.storage_class =
+                                        crate::types::ReflectStorageClass::StorageBuffer
+                                }
+                                _ => {
+                                    return Err(format!(
+                                        "Invalid SPIR-V ID storage class {:?}",
+                                        node.storage_class
+                                    ))
+                                }
                             }
 
                             let mut built_in = node.decorations.built_in.is_some();
