@@ -18,7 +18,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 bitflags = "1.2.1"
-spirv_headers = { git = "https://github.com/Traverse-Research/rspirv.git", rev = "fe9dd29" }
+spirv_headers = { git = "https://github.com/Traverse-Research/rspirv.git", rev = "9b9544ecbd6cead36e5f8bc3c33a0c5dc0cab633" }
 num-traits = "0.2.10"
 serde = "1.0"
 serde_derive = "1.0.104"

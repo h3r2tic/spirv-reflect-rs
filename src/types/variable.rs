@@ -172,6 +172,13 @@ pub enum ReflectStorageClass {
     AtomicCounter,
     Image,
     StorageBuffer,
+    CallableData,
+    IncomingCallableData,
+    RayPayload,
+    HitAttribute,
+    IncomingRayPayload,
+    ShaderRecordBuffer,
+    PhysicalStorageBuffer,
 }
 
 impl Default for ReflectStorageClass {
@@ -200,7 +207,25 @@ impl From<Option<spirv_headers::StorageClass>> for ReflectStorageClass {
             Some(spirv_headers::StorageClass::AtomicCounter) => ReflectStorageClass::AtomicCounter,
             Some(spirv_headers::StorageClass::Image) => ReflectStorageClass::Image,
             Some(spirv_headers::StorageClass::StorageBuffer) => ReflectStorageClass::StorageBuffer,
-            _ => ReflectStorageClass::Undefined,
+            Some(spirv_headers::StorageClass::CallableDataNV) => ReflectStorageClass::CallableData,
+            Some(spirv_headers::StorageClass::IncomingCallableDataNV) => {
+                ReflectStorageClass::IncomingCallableData
+            }
+            Some(spirv_headers::StorageClass::RayPayloadNV) => ReflectStorageClass::RayPayload,
+            Some(spirv_headers::StorageClass::HitAttributeNV) => ReflectStorageClass::HitAttribute,
+            Some(spirv_headers::StorageClass::IncomingRayPayloadNV) => {
+                ReflectStorageClass::IncomingRayPayload
+            }
+            Some(spirv_headers::StorageClass::ShaderRecordBufferNV) => {
+                ReflectStorageClass::ShaderRecordBuffer
+            }
+            Some(spirv_headers::StorageClass::PhysicalStorageBufferEXT) => {
+                ReflectStorageClass::PhysicalStorageBuffer
+            }
+            _ => {
+                dbg!(raw);
+                ReflectStorageClass::Undefined
+            }
         }
     }
 }

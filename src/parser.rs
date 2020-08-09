@@ -620,6 +620,7 @@ impl Parser {
                     while self.functions[callee_function].id != callee_id {
                         callee_function += 1;
                         if callee_function >= self.function_count {
+                            dbg!();
                             return Err("Invalid SPIR-V ID reference".into());
                         }
                     }
@@ -840,6 +841,7 @@ impl Parser {
                         _ => {}
                     }
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
             } else {
@@ -940,6 +942,7 @@ impl Parser {
                 if let Some(next_node_index) = self.find_node(component_type_id) {
                     self.parse_type(&spv_words, module, next_node_index, None, type_description)?;
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
             }
@@ -950,6 +953,7 @@ impl Parser {
                 if let Some(next_node_index) = self.find_node(column_type_id) {
                     self.parse_type(&spv_words, module, next_node_index, None, type_description)?;
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
                 type_description.traits.numeric.matrix.row_count =
@@ -982,6 +986,7 @@ impl Parser {
                 if let Some(next_node_index) = self.find_node(image_type_id) {
                     self.parse_type(&spv_words, module, next_node_index, None, type_description)?;
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
             }
@@ -1003,9 +1008,11 @@ impl Parser {
                             type_description,
                         )?;
                     } else {
+                        dbg!();
                         return Err("Invalid SPIR-V ID reference".into());
                     }
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
             }
@@ -1014,6 +1021,7 @@ impl Parser {
                 if let Some(next_node_index) = self.find_node(element_type_id) {
                     self.parse_type(&spv_words, module, next_node_index, None, type_description)?;
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
             }
@@ -1040,6 +1048,7 @@ impl Parser {
                         member_type_description.struct_member_name =
                             self.nodes[node_index].member_names[member_index].to_owned();
                     } else {
+                        dbg!();
                         return Err("Invalid SPIR-V ID reference".into());
                     }
 
@@ -1050,14 +1059,20 @@ impl Parser {
                 type_description.storage_class =
                     spirv_headers::StorageClass::from_u32(spv_words[word_offset + 2]).into();
                 if type_description.storage_class == crate::types::ReflectStorageClass::Undefined {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
                 let type_id = spv_words[word_offset + 3];
                 if let Some(next_node_index) = self.find_node(type_id) {
                     self.parse_type(&spv_words, module, next_node_index, None, type_description)?;
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
+            }
+            spirv_headers::Op::TypeAccelerationStructureNV => {
+                type_description.type_flags |=
+                    crate::types::ReflectTypeFlags::EXTERNAL_ACCELERATION_STRUCTURE_NV;
             }
             _ => {}
         }
@@ -1150,9 +1165,11 @@ impl Parser {
                             {
                                 pointer_type_index
                             } else {
+                                dbg!();
                                 return Err("Invalid SPIR-V ID reference".into());
                             }
                         } else {
+                            dbg!();
                             return Err("Invalid SPIR-V ID reference".into());
                         }
                     } else {
@@ -1204,6 +1221,7 @@ impl Parser {
                         },
                     );
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
             }
@@ -1313,8 +1331,17 @@ impl Parser {
                                 crate::types::ReflectDescriptorType::CombinedImageSampler;
                         }
                     }
+                    crate::types::ReflectTypeFlags::EXTERNAL_ACCELERATION_STRUCTURE_NV => {
+                        descriptor_binding.descriptor_type =
+                            crate::types::ReflectDescriptorType::AccelerationStructure;
+                    }
                     _ => {
-                        return Err("Invalid SPIR-V type flag".into());
+                        return Err(format!(
+                            "Invalid SPIR-V type flag: {:?} in {:#?}",
+                            type_description.type_flags
+                                & crate::types::ReflectTypeFlags::EXTERNAL_MASK,
+                            type_description
+                        ));
                     }
                 }
 
@@ -1340,7 +1367,15 @@ impl Parser {
                     | crate::types::ReflectDescriptorType::UniformBufferDynamic => {
                         crate::types::ReflectResourceTypeFlags::CONSTANT_BUFFER_VIEW
                     }
-                    _ => crate::types::ReflectResourceTypeFlags::UNDEFINED,
+                    crate::types::ReflectDescriptorType::AccelerationStructure => {
+                        crate::types::ReflectResourceTypeFlags::ACCELERATION_STRUCTURE
+                    }
+                    _ => {
+                        return Err(format!(
+                            "Invalid SPIR-V resource type: {:?}",
+                            descriptor_binding.descriptor_type
+                        ));
+                    }
                 };
             } else {
                 return Err("Invalid SPIR-V type description".into());
@@ -1429,6 +1464,7 @@ impl Parser {
                             if let Some(test_type_node_index) = self.find_node(element_type_id) {
                                 resolved_node_index = test_type_node_index;
                             } else {
+                                dbg!();
                                 return Err("Invalid SPIR-V ID reference".into());
                             }
                         }
@@ -1446,9 +1482,11 @@ impl Parser {
                             {
                                 (resolved_type_node_index, resolved_type_description)
                             } else {
+                                dbg!();
                                 return Err("Invalid SPIR-V ID reference".into());
                             }
                         } else {
+                            dbg!();
                             return Err("Invalid SPIR-V ID reference".into());
                         }
                     }
@@ -1495,6 +1533,7 @@ impl Parser {
 
                 resolved_type
             } else {
+                dbg!();
                 return Err("Invalid SPIR-V ID reference".into());
             }
         } else {
@@ -1772,9 +1811,11 @@ impl Parser {
                             {
                                 pointer_type_index
                             } else {
+                                dbg!();
                                 return Err("Invalid SPIR-V ID reference".into());
                             }
                         } else {
+                            dbg!();
                             return Err("Invalid SPIR-V ID reference".into());
                         }
                     } else {
@@ -1801,6 +1842,7 @@ impl Parser {
                         )?;
                         module.internal.push_constant_blocks.push(push_constant);
                     } else {
+                        dbg!();
                         return Err("Invalid SPIR-V ID reference".into());
                     }
                 }
@@ -1916,6 +1958,7 @@ impl Parser {
             //variable.format = Self::parse_format(&type_description)?;
             variable.type_description = type_description.to_owned();
         } else {
+            dbg!();
             return Err("Invalid SPIR-V ID reference".into());
         }
 
@@ -1941,6 +1984,7 @@ impl Parser {
                         _ => {}
                     }
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
             }
@@ -1964,9 +2008,11 @@ impl Parser {
                                     type_description =
                                         &module.internal.type_descriptions[pointer_type_index];
                                 } else {
+                                    dbg!();
                                     return Err("Invalid SPIR-V ID reference".into());
                                 }
                             } else {
+                                dbg!();
                                 return Err("Invalid SPIR-V ID reference".into());
                             }
                         }
@@ -1998,9 +2044,21 @@ impl Parser {
                                     variable.storage_class =
                                         crate::types::ReflectStorageClass::StorageBuffer
                                 }
+                                spirv_headers::StorageClass::RayPayloadKHR => {
+                                    variable.storage_class =
+                                        crate::types::ReflectStorageClass::RayPayload
+                                }
+                                spirv_headers::StorageClass::HitAttributeKHR => {
+                                    variable.storage_class =
+                                        crate::types::ReflectStorageClass::HitAttribute
+                                }
+                                spirv_headers::StorageClass::IncomingRayPayloadKHR => {
+                                    variable.storage_class =
+                                        crate::types::ReflectStorageClass::IncomingRayPayload
+                                }
                                 _ => {
                                     return Err(format!(
-                                        "Invalid SPIR-V ID storage class {:?}",
+                                        "Invalid SPIR-V ID storage class {:?} (TODO?)",
                                         node.storage_class
                                     ))
                                 }
@@ -2038,12 +2096,15 @@ impl Parser {
                                 _ => {}
                             }
                         } else {
+                            dbg!();
                             return Err("Invalid SPIR-V ID reference".into());
                         }
                     } else {
+                        dbg!();
                         return Err("Invalid SPIR-V ID reference".into());
                     }
                 } else {
+                    dbg!();
                     return Err("Invalid SPIR-V ID reference".into());
                 }
             }
@@ -2115,6 +2176,7 @@ impl Parser {
             }
         }
 
+        dbg!();
         return Err("Invalid SPIR-V ID reference".into());
     }
 

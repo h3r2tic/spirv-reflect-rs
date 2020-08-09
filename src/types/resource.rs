@@ -7,6 +7,7 @@ bitflags! {
         const CONSTANT_BUFFER_VIEW = 4;
         const SHADER_RESOURCE_VIEW = 8;
         const UNORDERED_ACCESS_VIEW = 256;
+        const ACCELERATION_STRUCTURE = 512;
     }
 }
 
